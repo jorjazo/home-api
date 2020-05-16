@@ -6,4 +6,4 @@ jobs:
     name: Build/test
     runs-on: ubuntu-latest
     steps:
-      - run: ./gradle clean test buildJar
+      - run: ./gradlew clean test bootJar
