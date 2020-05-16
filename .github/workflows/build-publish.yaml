@@ -1,9 +1,0 @@
-name: Build, test, build jar, docker build and publish 
-on: [push]
-
-jobs:
-  build:
-    name: Build/test
-    runs-on: ubuntu-latest
-    steps:
-      - run: ./gradlew clean test bootJar
