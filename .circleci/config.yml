@@ -27,6 +27,15 @@ orbs:
             type: string
             default: /tmp/artifacts
             description: Absolute path to artifacts temporary directory
+          workspace:
+            type: string
+            default: ""
+            description: Space-delimited list of paths relative to the working directory to store.
+          workspace-tmp-dir:
+            type: string
+            default: /tmp/workspace
+            description: Absolute path to workspace temporary directory
+          
         executor: << parameters.executor >>
         steps:
         - checkout
@@ -49,11 +58,20 @@ orbs:
             path: << parameters.artifacts-tmp-dir >>
             destination: .
         - gradle/collect_test_results
-#        - persist_to_workspace:
-#            root: .
-#            paths:
-#            - Dockerfile
-#            - build/libs
+        - run:
+            name: Prepare workspace
+            command: |
+              mkdir -p << parameters.workspace-tmp-dir >>
+              for path in << parameters.workspace >> ; do
+                DEST=<< parameters.workspace-tmp-dir >>/$(dirname $path)
+                echo "$path -> $DEST" 
+                mkdir -p << parameters.workspace-tmp-dir >>/$(dirname ./$path)
+                cp -r ./$path $DEST
+              done
+        - persist_to_workspace:
+            root: << parameters.workspace-tmp-dir >>
+            paths:
+            - .
 
 workflows:
   build-docker:
