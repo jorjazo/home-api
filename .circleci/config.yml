@@ -39,7 +39,7 @@ orbs:
             name: Prepare artifacts
             command: |
               mkdir -p << parameters.artifacts-tmp-dir >>
-              for path in $(<< parameters.artifacts >>) ; do
+              for path in << parameters.artifacts >> ; do
                 DEST=<< parameters.artifacts-tmp-dir >>/$(dirname $path)
                 echo "$path -> $DEST" 
                 mkdir -p << parameters.artifacts-tmp-dir >>/$(dirname ./$path)
