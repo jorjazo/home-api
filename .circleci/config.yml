@@ -35,7 +35,10 @@ orbs:
             type: string
             default: /tmp/workspace
             description: Absolute path to workspace temporary directory
-          
+          app-jar:
+            type: string
+            default: app.jar
+            description: Special name for the largest JAR file in the build directory. Used for docker image.
         executor: << parameters.executor >>
         steps:
         - checkout
@@ -68,6 +71,11 @@ orbs:
                 mkdir -p << parameters.workspace-tmp-dir >>/$(dirname ./$path)
                 cp -r ./$path $DEST
               done
+              
+              find build/libs -name '*jar' -printf '%s %p\n' \
+                | sort -nr | head -n1 | cut -d\  -f2 \
+                | echo $(cat) << parameters.workspace-tmp-dir >>/<< parameters.app-jar >> \
+                | xargs cp
         - persist_to_workspace:
             root: << parameters.workspace-tmp-dir >>
             paths:
