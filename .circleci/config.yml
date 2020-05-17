@@ -1,20 +1,68 @@
 version: 2.1
 
 orbs:
-    boot:
-      parameters:
-      - executor:
-        type: executor
-        default: gradle/default
-        description: Executor to use for the gradle build
-      commands:
-        bla:
-          steps:
-          - run: ehco Bla
-    gradle: circleci/gradle@2.0.1
-    docker: circleci/docker@1.0.1
-    kube: circleci/kubernetes@0.11.0
-    
+  boot:
+    orbs:
+      gradle: circleci/gradle@2.0.1
+    jobs:
+      build-test-jar:
+        parameters:
+          executor:
+            type: executor
+            default: gradle/default
+            description: Executor to use for the gradle build.
+          gradle:
+            type: string
+            default: ./gradlew
+            description: Gradle command.
+          tasks:
+            type: string
+            default: clean test bootJar
+            description: Space-separated gradle task list to run.
+          artifacts:
+            type: string
+            default: build/libs
+            description: Space-delimited list of paths relative to the working directory to store.
+          artifacts-tmp-dir:
+            type: string
+            default: /tmp/artifacts
+            description: Absolute path to artifacts temporary directory
+        executor: << parameters.executor >>
+        steps:
+        - checkout
+        - gradle/with_cache:
+            steps:
+            - run:
+                name: Gradle build
+                command: << parameters.gradle >> << parameters.tasks >>
+        - run:
+            name: Prepare artifacts
+            command: |
+              mkdir -p << parameters.artifacts-tmp-dir >>
+              for path in $(<< parameters.artifacts >>)
+                DEST=<< parameters.artifacts-tmp-dir >>/$(dirname $path)
+                echo "$path -> $DEST" 
+                mkdir -p << parameters.artifacts-tmp-dir >>/$(dirname ./$path)
+                cp -r ./$path $DEST
+              done
+        - store_artifacts:
+            path: << parameters.artifacts-tmp-dir >>
+            destination: .
+        - gradle/collect_test_results
+#        - persist_to_workspace:
+#            root: .
+#            paths:
+#            - Dockerfile
+#            - build/libs
+
+workflows:
+  build-docker:
+    jobs:
+    - boot/build-test-jar
+
+#  docker: circleci/docker@1.0.1
+#  kube: circleci/kubernetes@0.11.0
+   
 #    boot:
 #      parameters:
 #      - executor:
@@ -57,11 +105,11 @@ orbs:
 #            - build/libs
         
     
-workflows:
-    build-docker:
-        jobs:
+#workflows:
+#  build-docker:
+#    jobs:
+#    - boot/bla
 #        - boot/build-test-jar
-        - boot/bla
 #        - build
 #        - docker-build-publish:
 #            context: casa
@@ -76,54 +124,54 @@ workflows:
 #            requires:
 #            - approve-deploy
 
-jobs:
-    build:
-        executor: gradle/default
-        environment:
-            JVM_OPTS: -Xmx3200m
-            TERM: dumb
-        steps:
-        - checkout
-        - gradle/with_cache:
-            steps:
-            - run: ./gradlew clean test bootJar
-        - store_artifacts:
-            path: build/libs/home-api.jar
-            destination: home-api.jar
-        - gradle/collect_test_results
-        - persist_to_workspace:
-            root: .
-            paths:
-            - Dockerfile
-            - build/libs
-    docker-build-publish:
-        executor: docker/machine
-        steps:
-        - attach_workspace:
-            at: ./ws
-        - docker/check
-        - docker/build:
-            path: ./ws
-            image: ${DOCKER_LOGIN}/${DOCKER_REPO}
-            tag: ${CIRCLE_SHA1},${CIRCLE_BUILD_NUM}
-        - docker/push:
-            image: ${DOCKER_LOGIN}/${DOCKER_REPO}
-            tag: ${CIRCLE_SHA1},${CIRCLE_BUILD_NUM}
-    deploy:
-        docker:
-        - image: 'cimg/base:stable'
-        steps:
-        - kube/install-kubectl
-        - run:
-            name: Export certificate authority data
-            command: echo "${KUBE_CERT}" | base64 --decode > cert.crt
-        - run:
-            name: Update image
-            command: >
-                kubectl \
-                    --token ${KUBE_TOKEN} \
-                    --server=${KUBE_SERVER} \
-                    --certificate-authority=cert.crt \
-                    --record=true \
-                    set image deployment/${KUBE_DEPLOYMENT} \
-                    ${KUBE_CONTAINER}=${DOCKER_LOGIN}/${DOCKER_REPO}:${CIRCLE_BUILD_NUM}
+#jobs:
+#    build:
+#        executor: gradle/default
+#        environment:
+#            JVM_OPTS: -Xmx3200m
+#            TERM: dumb
+#        steps:
+#        - checkout
+#        - gradle/with_cache:
+#            steps:
+#            - run: ./gradlew clean test bootJar
+#        - store_artifacts:
+#            path: build/libs/home-api.jar
+#            destination: home-api.jar
+#        - gradle/collect_test_results
+#        - persist_to_workspace:
+#            root: .
+#            paths:
+#            - Dockerfile
+#            - build/libs
+#    docker-build-publish:
+#        executor: docker/machine
+#        steps:
+#        - attach_workspace:
+#            at: ./ws
+#        - docker/check
+#        - docker/build:
+#            path: ./ws
+#            image: ${DOCKER_LOGIN}/${DOCKER_REPO}
+#            tag: ${CIRCLE_SHA1},${CIRCLE_BUILD_NUM}
+#        - docker/push:
+#            image: ${DOCKER_LOGIN}/${DOCKER_REPO}
+#            tag: ${CIRCLE_SHA1},${CIRCLE_BUILD_NUM}
+#    deploy:
+#        docker:
+#        - image: 'cimg/base:stable'
+#        steps:
+#        - kube/install-kubectl
+#        - run:
+#            name: Export certificate authority data
+#            command: echo "${KUBE_CERT}" | base64 --decode > cert.crt
+#        - run:
+#            name: Update image
+#            command: >
+#                kubectl \
+#                    --token ${KUBE_TOKEN} \
+#                    --server=${KUBE_SERVER} \
+#                    --certificate-authority=cert.crt \
+#                    --record=true \
+#                    set image deployment/${KUBE_DEPLOYMENT} \
+#                    ${KUBE_CONTAINER}=${DOCKER_LOGIN}/${DOCKER_REPO}:${CIRCLE_BUILD_NUM}
