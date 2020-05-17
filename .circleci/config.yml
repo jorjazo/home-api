@@ -1,17 +1,15 @@
 version: 2.1
 
-#parameters:
-#- context:
-#    type: string
-#- jar-name:
-#    type: string
-#    default: app.jar
-
-
 orbs:
+    boot:
+      commands:
+        bla:
+          steps:
+          - run: ehco Bla
     gradle: circleci/gradle@2.0.1
     docker: circleci/docker@1.0.1
     kube: circleci/kubernetes@0.11.0
+    
 #    boot:
 #      parameters:
 #      - executor:
