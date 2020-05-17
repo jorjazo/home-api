@@ -12,52 +12,53 @@ orbs:
     gradle: circleci/gradle@2.0.1
     docker: circleci/docker@1.0.1
     kube: circleci/kubernetes@0.11.0
-    boot:
-      parameters:
-      - executor:
-        type: executor
-        default: gradle/default
-        description: Executor to use for the gradle build
-      - gradle:
-        type: string
-        default: ./gradlew
-        description: Gradle command
-      - tasks:
-        type: string
-        default: clean test bootJar
-        description: Space-separated gradle task list to run
-      - artifacts:
-        type: string
-        default: build/libs
-
-      orbs:
-        gradle: circleci/gradle@2.0.1
-      
-      commands:
-      - build-test-jar:
-        executor: << parameters.executor >>
-        steps:
-        - checkout
-        - gradle/with_cache:
-            steps:
-            - run:
-              name: Gradle build
-              command: << parameters.gradle >> << parameters.tasks >>
-        - store_artifacts:
-            path: build/libs
-            destination: libs
-        - gradle/collect_test_results
-        - persist_to_workspace:
-            root: .
-            paths:
-            - Dockerfile
-            - build/libs
+#    boot:
+#      parameters:
+#      - executor:
+#        type: executor
+#        default: gradle/default
+#        description: Executor to use for the gradle build
+#      - gradle:
+#        type: string
+#        default: ./gradlew
+#        description: Gradle command
+#      - tasks:
+#        type: string
+#        default: clean test bootJar
+#        description: Space-separated gradle task list to run
+#      - artifacts:
+#        type: string
+#        default: build/libs
+#
+#      orbs:
+#        gradle: circleci/gradle@2.0.1
+#      
+#      commands:
+#      - build-test-jar:
+#        executor: << parameters.executor >>
+#        steps:
+#        - checkout
+#        - gradle/with_cache:
+#            steps:
+#            - run:
+#              name: Gradle build
+#              command: << parameters.gradle >> << parameters.tasks >>
+#        - store_artifacts:
+#            path: build/libs
+#            destination: libs
+#        - gradle/collect_test_results
+#        - persist_to_workspace:
+#            root: .
+#            paths:
+#            - Dockerfile
+#            - build/libs
         
     
 workflows:
     build-docker:
         jobs:
-        - boot/build-test-jar
+#        - boot/build-test-jar
+        - build
         - docker-build-publish:
             context: casa
             requires:
@@ -72,25 +73,25 @@ workflows:
             - approve-deploy
 
 jobs:
-#    build:
-#        executor: gradle/default
-#        environment:
-#            JVM_OPTS: -Xmx3200m
-#            TERM: dumb
-#        steps:
-#        - checkout
-#        - gradle/with_cache:
-#            steps:
-#            - run: ./gradlew clean test bootJar
-#        - store_artifacts:
-#            path: build/libs/home-api.jar
-#            destination: home-api.jar
-#        - gradle/collect_test_results
-#        - persist_to_workspace:
-#            root: .
-#            paths:
-#            - Dockerfile
-#            - build/libs
+    build:
+        executor: gradle/default
+        environment:
+            JVM_OPTS: -Xmx3200m
+            TERM: dumb
+        steps:
+        - checkout
+        - gradle/with_cache:
+            steps:
+            - run: ./gradlew clean test bootJar
+        - store_artifacts:
+            path: build/libs/home-api.jar
+            destination: home-api.jar
+        - gradle/collect_test_results
+        - persist_to_workspace:
+            root: .
+            paths:
+            - Dockerfile
+            - build/libs
     docker-build-publish:
         executor: docker/machine
         steps:
