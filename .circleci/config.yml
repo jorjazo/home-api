@@ -1,0 +1,75 @@
+version: 2.1
+
+orbs:
+    gradle: circleci/gradle@2.0.1
+    docker: circleci/docker@1.0.1
+    kube: circleci/kubernetes@0.11.0
+    
+workflows:
+    build-docker:
+        jobs:
+        - build
+        - docker-build-publish:
+            context: casa
+            requires:
+            - build
+        - approve-deploy:
+            type: approval
+            requires:
+            - docker-build-publish
+        - deploy:
+            context: casa
+            requires:
+            - approve-deploy
+
+jobs:
+    build:
+        executor: gradle/default
+        environment:
+            JVM_OPTS: -Xmx3200m
+            TERM: dumb
+        steps:
+        - checkout
+        - gradle/with_cache:
+            steps:
+            - run: ./gradlew clean test bootJar
+        - store_artifacts:
+            path: build/libs/home-api.jar
+            destination: home-api.jar
+        - gradle/collect_test_results
+        - persist_to_workspace:
+            root: .
+            paths:
+            - Dockerfile
+            - build/libs
+    docker-build-publish:
+        executor: docker/machine
+        steps:
+        - attach_workspace:
+            at: ./ws
+        - docker/check
+        - docker/build:
+            path: ./ws
+            image: ${DOCKER_LOGIN}/${DOCKER_REPO}
+            tag: ${CIRCLE_SHA1},${CIRCLE_BUILD_NUM}
+        - docker/push:
+            image: ${DOCKER_LOGIN}/${DOCKER_REPO}
+            tag: ${CIRCLE_SHA1},${CIRCLE_BUILD_NUM}
+    deploy:
+        docker:
+        - image: 'cimg/base:stable'
+        steps:
+        - kube/install-kubectl
+        - run:
+            name: Export certificate authority data
+            command: echo "${KUBE_CERT}" | base64 --decode > cert.crt
+        - run:
+            name: Update image
+            command: >
+                kubectl \
+                    --token ${KUBE_TOKEN} \
+                    --server=${KUBE_SERVER} \
+                    --certificate-authority=cert.crt \
+                    --record=true \
+                    set image deployment/${KUBE_DEPLOYMENT} \
+                    ${KUBE_CONTAINER}=${DOCKER_LOGIN}/${DOCKER_REPO}:${CIRCLE_BUILD_NUM}
