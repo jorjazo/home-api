@@ -2,6 +2,11 @@ version: 2.1
 
 orbs:
     boot:
+      parameters:
+      - executor:
+        type: executor
+        default: gradle/default
+        description: Executor to use for the gradle build
       commands:
         bla:
           steps:
@@ -56,19 +61,20 @@ workflows:
     build-docker:
         jobs:
 #        - boot/build-test-jar
-        - build
-        - docker-build-publish:
-            context: casa
-            requires:
-            - build
-        - approve-deploy:
-            type: approval
-            requires:
-            - docker-build-publish
-        - deploy:
-            context: casa
-            requires:
-            - approve-deploy
+        - boot/bla
+#        - build
+#        - docker-build-publish:
+#            context: casa
+#            requires:
+#            - build
+#        - approve-deploy:
+#            type: approval
+#            requires:
+#            - docker-build-publish
+#        - deploy:
+#            context: casa
+#            requires:
+#            - approve-deploy
 
 jobs:
     build:
