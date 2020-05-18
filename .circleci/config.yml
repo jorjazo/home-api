@@ -180,9 +180,11 @@ workflows:
   build-docker:
     jobs:
     - boot/build-test-jar
-    - boot/docker-build-push
+    - boot/docker-build-push:
+        requires:
+        - boot/build-test-jar
+        context: casa
 
-#  docker: circleci/docker@1.0.1
 #  kube: circleci/kubernetes@0.11.0
    
 #workflows:
