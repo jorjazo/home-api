@@ -187,6 +187,8 @@ orbs:
                     | ./docker login -u "$<< parameters.docker-username >>" \
                         --password-stdin  << parameters.registry >>
                   
+                  ./docker pull multiarch/qemu-user-static:register
+                  
                   export DOCKER_CLI_EXPERIMENTAL=enabled
                   ./docker run --rm --privileged multiarch/qemu-user-static:register
                   ./docker buildx create --use --name mybuild
