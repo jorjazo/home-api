@@ -184,6 +184,7 @@ orbs:
                 name: Build image with buildx
                 command: |
                   export DOCKER_CLI_EXPERIMENTAL=enabled
+                  docker run --rm --privileged multiarch/qemu-user-static:register
                   cat /proc/sys/fs/binfmt_misc/qemu-*
                   docker buildx create --use --name mybuild
                   
@@ -279,6 +280,8 @@ workflows:
         - boot/docker-build-push
     - kube/deploy:
         context: casa
+        requires:
+        - approve-deploy
         server: ${KUBE_SERVER}
         token: ${KUBE_TOKEN}
         deployment: home-api-deployment
