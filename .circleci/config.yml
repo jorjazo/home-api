@@ -155,6 +155,14 @@ orbs:
           image:
             type: string
             default: ${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
+          buildx:
+            type: boolean
+            default: false
+            description: Use builx for cross-platform building
+          platform:
+            type: string
+            default: linux/amd64,linux/arm64
+            description: Target platform.
         executor: << parameters.executor >>
         working_directory: << parameters.workspace >>
         steps:
@@ -169,36 +177,91 @@ orbs:
             docker-username: << parameters.docker-username >>
             docker-password: << parameters.docker-password >>
             registry: << parameters.registry >>
-        - docker/build:
-            path: << parameters.workspace >>
-            image: << parameters.image >>
-            tag: << parameters.tags >>
-        - docker/push:
-            image: << parameters.image >>
-            tag: << parameters.tags >>
+        - when:
+            condition: << parameters.buildx >>
+            steps:
+            - run:
+                name: Build image with buildx
+                command: |
+                  export DOCKER_CLI_EXPERIMENTAL=enabled
+                  cat /proc/sys/fs/binfmt_misc/qemu-*
+                  docker buildx create --use --name mybuild
+                  
+                  docker_tag_args=""
+                  IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tags >>"
+                  for tag in "${DOCKER_TAGS[@]}"; do
+                    docker_tag_args="$docker_tag_args -t <<parameters.registry>>/<<parameters.image>>:${tag}"
+                  done
+                  
+                  docker buildx build --platform << parameters.platform >>  $docker_tag_args .
+        - unless:
+            condition: << parameters.buildx >>
+            steps:
+            - docker/build:
+                path: << parameters.workspace >>
+                image: << parameters.image >>
+                tag: << parameters.tags >>
+            - docker/push:
+                image: << parameters.image >>
+                tag: << parameters.tags >>
 
   kube:
     orbs:
       ci-kube: circleci/kubernetes@0.11.0
-    jobs:
-      deploy:
+    executors:
+      default:
         docker:
         - image: 'cimg/base:stable'
+    jobs:
+      deploy:
+        parameters:
+          executor:
+            type: executor
+            default: default
+          cert-authority:
+            type: env_var_name
+            default: KUBE_CERT
+            description: Environment variable holding the kubernetes cluster certificate-authority-data, as it is in your ~/.kube/config file.
+          server:
+            type: string
+            description: Kubernetes server URL, as it is in your ~/.kube/config file.
+          token:
+            type: string
+            description: |
+              Kubernetes service acount's secret token.
+              Can be gotten using kubectl get secret service-acount-token-abcde -o jsonpath="{.data.token}"
+          record:
+            type: boolean
+            default: true
+            description: record parameter for kubectl deployment.
+          deployment:
+            type: string
+            description: Kubernetes deployment name.
+          container:
+            type: string
+            description: Kubernetes deployment name.
+          image:
+            type: string
+            default: ${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
+          tag:
+            type: string
+            default: ${CIRCLE_BUILD_NUM}
+        executor: << parameters.executor >>
         steps:
-        - kube/install-kubectl
+        - ci-kube/install-kubectl
         - run:
             name: Export certificate authority data
-            command: echo "${KUBE_CERT}" | base64 --decode > cert.crt
+            command: echo "${<< parameters.cert-authority >>}" | base64 --decode > cert.crt
         - run:
             name: Update image
             command: >
                 kubectl \
-                    --token ${KUBE_TOKEN} \
-                    --server=${KUBE_SERVER} \
+                    --token=<< parameters.token >> \
+                    --server=<< parameters.server >> \
                     --certificate-authority=cert.crt \
-                    --record=true \
-                    set image deployment/${KUBE_DEPLOYMENT} \
-                    ${KUBE_CONTAINER}=${DOCKER_LOGIN}/${DOCKER_REPO}:${CIRCLE_BUILD_NUM}
+                    --record=<< parameters.record >> \
+                    set image deployment/<< parameters.deployment >> \
+                    << parameters.container >>=<< parameters.image >>:<< parameters.tag >>
     
 
 workflows:
@@ -209,6 +272,17 @@ workflows:
         requires:
         - boot/build-test-jar
         context: casa
+        buildx: true
+    - approve-deploy:
+        type: approval
+        requires:
+        - boot/docker-build-push
+    - kube/deploy:
+        context: casa
+        server: ${KUBE_SERVER}
+        token: ${KUBE_TOKEN}
+        deployment: home-api-deployment
+        container: home-api
 
 #workflows:
 #  build-docker:
