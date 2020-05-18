@@ -154,7 +154,7 @@ orbs:
             description: Comma-delimited list of tags.
           image:
             type: string
-            default: $<<parameters.docker-username>>/${CIRCLE_PROJECT_REPONAME}
+            default: ${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
         executor: << parameters.executor >>
         steps:
         - attach_workspace:
