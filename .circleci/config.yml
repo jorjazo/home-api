@@ -209,8 +209,6 @@ orbs:
                         --password-stdin  << parameters.registry >>
 
                   << parameters.docker >> buildx build --push --platform << parameters.platform >>  $docker_tag_args .
-                  
-                  
         - unless:
             condition: << parameters.buildx >>
             steps:
@@ -294,6 +292,7 @@ workflows:
         - boot/build-test-jar
         context: casa
         buildx: true
+        base-image: adoptopenjdk:14-hotspot
     - approve-deploy:
         type: approval
         requires:
