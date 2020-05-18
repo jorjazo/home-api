@@ -4,6 +4,36 @@ orbs:
   boot:
     orbs:
       gradle: circleci/gradle@2.0.1
+      docker: circleci/docker@1.0.1
+    commands:
+      boot-dockerfile:
+        parameters:
+          base-image:
+            type: string
+            default: openjdk:13-jdk
+            description: Image to be used in the FROM clause.
+          jar:
+            type: string
+            default: app.jar
+            description: Path to the generated boot jar file.
+          container-jar:
+            type: string
+            default: /app.jar
+            description: Absolute path to the location of the jar file inside the container.
+          dockerfile:
+            type: string
+            default: Dockerfile
+            description: Dockerfile file name.
+        steps:
+        - run:
+            name: Write default Dockerfile
+            command: |
+              echo '
+                FROM << parameters.base-image >>
+                COPY << parameters.jar >> << parameters.container-jar >>
+                ENTRYPOINT ["java","-jar","<< parameters.container-jar >>"]
+                ' > Dockerfile
+              cat Dockerfile
     jobs:
       build-test-jar:
         parameters:
@@ -81,56 +111,80 @@ orbs:
             paths:
             - .
 
+      docker-build-push:
+        parameters:
+          executor:
+            type: executor
+            default: docker/machine
+          workspace:
+            type: string
+            default: /tmp/workspace
+            description: Workspace location
+          docker-username:
+            type: env_var_name
+            default: DOCKER_LOGIN
+            description: Docker username environment variable name.
+          docker-password:
+            type: env_var_name
+            default: DOCKER_PASSWORD
+            description: Docker password environment variable name.
+          registry:
+            type: string
+            default: docker.io
+            description: Docker registry name.
+          base-image:
+            type: string
+            default: openjdk:13-jdk
+            description: Image to be used in the FROM clause.
+          jar:
+            type: string
+            default: app.jar
+            description: Path to the generated boot jar file.
+          container-jar:
+            type: string
+            default: /app.jar
+            description: Absolute path to the location of the jar file inside the container.
+          dockerfile:
+            type: string
+            default: Dockerfile
+            description: Dockerfile file name.
+          tags:
+            type: string
+            default: ${CIRCLE_SHA1},${CIRCLE_BUILD_NUM},latest
+            description: Comma-delimited list of tags.
+          image:
+            type: string
+            default: $<<parameters.docker-username>>/${CIRCLE_PROJECT_REPONAME}
+        executor: << parameters.executor >>
+        steps:
+        - attach_workspace:
+            at: << parameters.workspace >>
+        - boot-dockerfile:
+            base-image: << parameters.base-image >>
+            jar: << parameters.jar >>
+            container-jar: << parameters.container-jar >>
+            dockerfile: << parameters.dockerfile >>
+        - docker/check:
+            docker-username: << parameters.docker-username >>
+            docker-password: << parameters.docker-password >>
+            registry: << parameters.registry >>
+        - docker/build:
+            path: << parameters.workspace >>
+            image: << parameters.image >>
+            tag: << parameters.tags >>
+        - docker/push:
+            image: << parameters.image >>
+            tag: << parameters.tags >>
+
 workflows:
   build-docker:
     jobs:
     - boot/build-test-jar
+    - boot/docker-build-push
 
 #  docker: circleci/docker@1.0.1
 #  kube: circleci/kubernetes@0.11.0
    
-#    boot:
-#      parameters:
-#      - executor:
-#        type: executor
-#        default: gradle/default
-#        description: Executor to use for the gradle build
-#      - gradle:
-#        type: string
-#        default: ./gradlew
-#        description: Gradle command
-#      - tasks:
-#        type: string
-#        default: clean test bootJar
-#        description: Space-separated gradle task list to run
-#      - artifacts:
-#        type: string
-#        default: build/libs
-#
-#      orbs:
-#        gradle: circleci/gradle@2.0.1
-#      
-#      commands:
-#      - build-test-jar:
-#        executor: << parameters.executor >>
-#        steps:
-#        - checkout
-#        - gradle/with_cache:
-#            steps:
-#            - run:
-#              name: Gradle build
-#              command: << parameters.gradle >> << parameters.tasks >>
-#        - store_artifacts:
-#            path: build/libs
-#            destination: libs
-#        - gradle/collect_test_results
-#        - persist_to_workspace:
-#            root: .
-#            paths:
-#            - Dockerfile
-#            - build/libs
-        
-    
 #workflows:
 #  build-docker:
 #    jobs:
@@ -150,39 +204,6 @@ workflows:
 #            requires:
 #            - approve-deploy
 
-#jobs:
-#    build:
-#        executor: gradle/default
-#        environment:
-#            JVM_OPTS: -Xmx3200m
-#            TERM: dumb
-#        steps:
-#        - checkout
-#        - gradle/with_cache:
-#            steps:
-#            - run: ./gradlew clean test bootJar
-#        - store_artifacts:
-#            path: build/libs/home-api.jar
-#            destination: home-api.jar
-#        - gradle/collect_test_results
-#        - persist_to_workspace:
-#            root: .
-#            paths:
-#            - Dockerfile
-#            - build/libs
-#    docker-build-publish:
-#        executor: docker/machine
-#        steps:
-#        - attach_workspace:
-#            at: ./ws
-#        - docker/check
-#        - docker/build:
-#            path: ./ws
-#            image: ${DOCKER_LOGIN}/${DOCKER_REPO}
-#            tag: ${CIRCLE_SHA1},${CIRCLE_BUILD_NUM}
-#        - docker/push:
-#            image: ${DOCKER_LOGIN}/${DOCKER_REPO}
-#            tag: ${CIRCLE_SHA1},${CIRCLE_BUILD_NUM}
 #    deploy:
 #        docker:
 #        - image: 'cimg/base:stable'
