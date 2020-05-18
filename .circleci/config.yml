@@ -173,6 +173,8 @@ orbs:
             jar: << parameters.jar >>
             container-jar: << parameters.container-jar >>
             dockerfile: << parameters.dockerfile >>
+        - docker/install-docker:
+            install-dir: /opt/docker
         - docker/check:
             docker-username: << parameters.docker-username >>
             docker-password: << parameters.docker-password >>
@@ -184,9 +186,8 @@ orbs:
                 name: Build image with buildx
                 command: |
                   export DOCKER_CLI_EXPERIMENTAL=enabled
-                  docker run --rm --privileged multiarch/qemu-user-static:register
-                  cat /proc/sys/fs/binfmt_misc/qemu-*
-                  docker buildx create --use --name mybuild
+                  /opt/docker/docker run --rm --privileged multiarch/qemu-user-static:register
+                  /opt/docker/docker buildx create --use --name mybuild
                   
                   docker_tag_args=""
                   IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tags >>"
@@ -194,7 +195,7 @@ orbs:
                     docker_tag_args="$docker_tag_args -t <<parameters.registry>>/<<parameters.image>>:${tag}"
                   done
                   
-                  docker buildx build --platform << parameters.platform >>  $docker_tag_args .
+                  /opt/docker/docker buildx build --platform << parameters.platform >>  $docker_tag_args .
         - unless:
             condition: << parameters.buildx >>
             steps:
