@@ -190,6 +190,13 @@ orbs:
                   ./docker pull multiarch/qemu-user-static:register
                   
                   export DOCKER_CLI_EXPERIMENTAL=enabled
+                  ./docker buildx version
+                  
+                  if [ $? -ne 0 ]; then
+                    echo Docker buildx is not enabled.
+                    exit 1
+                  fi
+                  
                   ./docker run --rm --privileged multiarch/qemu-user-static:register
                   ./docker buildx create --use --name mybuild
                   
