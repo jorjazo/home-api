@@ -156,6 +156,7 @@ orbs:
             type: string
             default: ${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
         executor: << parameters.executor >>
+        working_directory: << parameters.workspace >>
         steps:
         - attach_workspace:
             at: << parameters.workspace >>
@@ -176,6 +177,30 @@ orbs:
             image: << parameters.image >>
             tag: << parameters.tags >>
 
+  kube:
+    orbs:
+      ci-kube: circleci/kubernetes@0.11.0
+    jobs:
+      deploy:
+        docker:
+        - image: 'cimg/base:stable'
+        steps:
+        - kube/install-kubectl
+        - run:
+            name: Export certificate authority data
+            command: echo "${KUBE_CERT}" | base64 --decode > cert.crt
+        - run:
+            name: Update image
+            command: >
+                kubectl \
+                    --token ${KUBE_TOKEN} \
+                    --server=${KUBE_SERVER} \
+                    --certificate-authority=cert.crt \
+                    --record=true \
+                    set image deployment/${KUBE_DEPLOYMENT} \
+                    ${KUBE_CONTAINER}=${DOCKER_LOGIN}/${DOCKER_REPO}:${CIRCLE_BUILD_NUM}
+    
+
 workflows:
   build-docker:
     jobs:
@@ -185,8 +210,6 @@ workflows:
         - boot/build-test-jar
         context: casa
 
-#  kube: circleci/kubernetes@0.11.0
-   
 #workflows:
 #  build-docker:
 #    jobs:
@@ -206,21 +229,3 @@ workflows:
 #            requires:
 #            - approve-deploy
 
-#    deploy:
-#        docker:
-#        - image: 'cimg/base:stable'
-#        steps:
-#        - kube/install-kubectl
-#        - run:
-#            name: Export certificate authority data
-#            command: echo "${KUBE_CERT}" | base64 --decode > cert.crt
-#        - run:
-#            name: Update image
-#            command: >
-#                kubectl \
-#                    --token ${KUBE_TOKEN} \
-#                    --server=${KUBE_SERVER} \
-#                    --certificate-authority=cert.crt \
-#                    --record=true \
-#                    set image deployment/${KUBE_DEPLOYMENT} \
-#                    ${KUBE_CONTAINER}=${DOCKER_LOGIN}/${DOCKER_REPO}:${CIRCLE_BUILD_NUM}
