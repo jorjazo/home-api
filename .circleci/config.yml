@@ -175,10 +175,6 @@ orbs:
             dockerfile: << parameters.dockerfile >>
         - docker/install-docker:
             install-dir: << parameters.workspace >>
-        - docker/check:
-            docker-username: << parameters.docker-username >>
-            docker-password: << parameters.docker-password >>
-            registry: << parameters.registry >>
         - when:
             condition: << parameters.buildx >>
             steps:
@@ -186,6 +182,11 @@ orbs:
                 name: Build image with buildx
                 command: |
                   ./docker --version
+                  
+                  echo "$<< parameters.docker-username >>" \
+                    | ./docker login -u "$<< parameters.docker-password >>" \
+                        --password-stdin  << parameters.registry >>
+                  
                   export DOCKER_CLI_EXPERIMENTAL=enabled
                   ./docker run --rm --privileged multiarch/qemu-user-static:register
                   ./docker buildx create --use --name mybuild
@@ -200,6 +201,10 @@ orbs:
         - unless:
             condition: << parameters.buildx >>
             steps:
+            - docker/check:
+                docker-username: << parameters.docker-username >>
+                docker-password: << parameters.docker-password >>
+                registry: << parameters.registry >>
             - docker/build:
                 path: << parameters.workspace >>
                 image: << parameters.image >>
