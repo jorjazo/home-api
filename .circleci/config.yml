@@ -275,7 +275,7 @@ orbs:
             name: Update image
             command: >
                 kubectl \
-                    --token=$(echo << parameters.token >> | base64 --decode) \
+                    --token=$(echo "<< parameters.token >>" | base64 --decode) \
                     --server=<< parameters.server >> \
                     --certificate-authority=cert.crt \
                     --record=<< parameters.record >> \
