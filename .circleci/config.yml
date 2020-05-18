@@ -177,31 +177,24 @@ orbs:
             jar: << parameters.jar >>
             container-jar: << parameters.container-jar >>
             dockerfile: << parameters.dockerfile >>
-        - run:
-            name: Remove old installation
-            command: |
-              sudo systemctl stop docker.service
-              sudo apt remove docker-ce docker-ce-cli containerd.io
-        - docker/install-docker:
-            install-dir: /usr/bin
         - when:
             condition: << parameters.buildx >>
             steps:
             - run:
                 name: Build image with buildx
                 command: |
-                  << parameters.docker >> --version
-                  
-                  << parameters.docker >> pull multiarch/qemu-user-static:register
-                  
+                  sudo apt -y install docker-ce docker-ce-cli containerd.io
                   export DOCKER_CLI_EXPERIMENTAL=enabled
+                  
+                  << parameters.docker >> version
                   << parameters.docker >> buildx version
                   
                   if [ $? -ne 0 ]; then
                     echo Docker buildx is not enabled.
                     exit 1
                   fi
-                  
+
+                  << parameters.docker >> pull multiarch/qemu-user-static:register
                   << parameters.docker >> run --rm --privileged multiarch/qemu-user-static:register
                   << parameters.docker >> buildx create --use --name mybuild
                   
