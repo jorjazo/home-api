@@ -292,7 +292,7 @@ workflows:
         - boot/build-test-jar
         context: casa
         buildx: true
-        platform: linux/amd64,linux/arm32v7,linux/arm64v8
+        platform: linux/amd64,linux/arm/v7,linux/arm64/v8
         base-image: adoptopenjdk:14-hotspot
     - approve-deploy:
         type: approval
