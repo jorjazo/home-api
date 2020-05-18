@@ -183,8 +183,8 @@ orbs:
                 command: |
                   ./docker --version
                   
-                  echo "$<< parameters.docker-username >>" \
-                    | ./docker login -u "$<< parameters.docker-password >>" \
+                  echo "$<< parameters.docker-password >>" \
+                    | ./docker login -u "$<< parameters.docker-username >>" \
                         --password-stdin  << parameters.registry >>
                   
                   export DOCKER_CLI_EXPERIMENTAL=enabled
