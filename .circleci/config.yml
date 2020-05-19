@@ -264,7 +264,7 @@ orbs:
             default: ${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
           tag:
             type: string
-            default: ${CIRCLE_BUILD_NUM}
+            default: ${CIRCLE_SHA1}
         executor: << parameters.executor >>
         steps:
         - ci-kube/install-kubectl
