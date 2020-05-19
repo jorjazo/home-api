@@ -250,8 +250,8 @@ orbs:
               Kubernetes service acount's secret token.
               Can be gotten using kubectl get secret service-acount-token-abcde -o jsonpath="{.data.token}"
           record:
-            type: boolean
-            default: true
+            type: string
+            default: "true"
             description: record parameter for kubectl deployment.
           deployment:
             type: string
@@ -275,7 +275,7 @@ orbs:
             name: Update image
             command: >
                 kubectl \
-                    --token=$(echo "<< parameters.token >>" | base64 --decode) \
+                    --token="$(echo '<< parameters.token >>' | base64 --decode)" \
                     --server=<< parameters.server >> \
                     --certificate-authority=cert.crt \
                     --record=<< parameters.record >> \
