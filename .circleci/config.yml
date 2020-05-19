@@ -304,7 +304,7 @@ workflows:
         - approve-deploy
         server: ${KUBE_SERVER}
         token: ${KUBE_TOKEN}
-        deployment: home-api-deployment
+        deployment: home-api
         container: home-api
 
 #workflows:
