@@ -2,64 +2,7 @@ version: 2.1
 
 orbs:
   boot: jorjazo/boot@1.1.1
-  kube:
-    orbs:
-      ci-kube: circleci/kubernetes@0.11.0
-    executors:
-      default:
-        docker:
-        - image: 'cimg/base:stable'
-    jobs:
-      deploy:
-        parameters:
-          executor:
-            type: executor
-            default: default
-          cert-authority:
-            type: env_var_name
-            default: KUBE_CERT
-            description: Environment variable holding the kubernetes cluster certificate-authority-data, as it is in your ~/.kube/config file.
-          server:
-            type: string
-            description: Kubernetes server URL, as it is in your ~/.kube/config file.
-          token:
-            type: string
-            description: |
-              Kubernetes service acount's secret token.
-              Can be gotten using kubectl get secret service-acount-token-abcde -o jsonpath="{.data.token}"
-          record:
-            type: string
-            default: "true"
-            description: record parameter for kubectl deployment.
-          deployment:
-            type: string
-            description: Kubernetes deployment name.
-          container:
-            type: string
-            description: Kubernetes deployment name.
-          image:
-            type: string
-            default: ${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
-          tag:
-            type: string
-            default: ${CIRCLE_SHA1}
-        executor: << parameters.executor >>
-        steps:
-        - ci-kube/install-kubectl
-        - run:
-            name: Export certificate authority data
-            command: echo "${<< parameters.cert-authority >>}" | base64 --decode > cert.crt
-        - run:
-            name: Update image
-            command: >
-                kubectl \
-                    --token="$(echo "<< parameters.token >>" | base64 --decode)" \
-                    --server=<< parameters.server >> \
-                    --certificate-authority=cert.crt \
-                    --record=<< parameters.record >> \
-                    set image deployment/<< parameters.deployment >> \
-                    << parameters.container >>=<< parameters.image >>:<< parameters.tag >>
-    
+  kube: jorjazo/kubernetes@1.0.0
 
 workflows:
   build-docker:
